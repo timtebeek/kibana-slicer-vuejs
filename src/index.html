@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>URL builder</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+		integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+	<script type="text/javascript" src="http://livejs.com/live.js"></script>
+	<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/vue/2.2.1/vue.js"></script>
+	<script type="text/javascript">//<![CDATA[
+		window.onload = function () {
+new Vue({
+	el: '#app',
+	data: {
+		namespace: { name: '', apps: [], kibanaIndex: '', kibanaUrl: ''},
+		namespaces: [],
+
+		app: '',
+		appfilter: '',
+
+		loglevel: { label: 'INFO', value: '20000' },
+		loglevels: [
+			{ label: 'INFO', value: '20000' },
+			{ label: 'WARN', value: '30000' },
+			{ label: 'ERROR', value: '40000' },
+		],
+
+		fieldname: 'message',
+		fieldvalue: '',
+
+		refreshInterval: { label: 'Every 5 seconds', value: true },
+		refreshIntervals: [
+			{ label: 'Every 5 seconds', value: true },
+			{ label: 'Disabled', value: false },
+		],
+		timewindow: { from: 'now-1h', to: 'now' },
+		timewindows: [
+			{ from: 'now-15m', to: 'now' },
+			{ from: 'now-1h', to: 'now' },
+			{ from: 'now-6h', to: 'now' },
+			{ from: 'now/d', to: 'now/d' },
+			{ from: 'now-1d/d', to: 'now-1d/d' },
+			{ from: 'now-7d', to: 'now' }
+		]
+	},
+	computed: {
+		apps: function () {
+			var options = this.namespace.apps || [];
+			return options.filter(it => it.includes(this.appfilter));
+		},
+		columns: function () {
+			var cols = [];
+			if (this.app.length == 0) {
+				cols.push('kubernetes.container_name');
+			}
+			// Add logstash supplied columns
+			if (this.fieldname != 'MESSAGE') {
+				cols.push('level');
+				cols.push('logger_name');
+				cols.push('message');
+			}
+			// Show additional column if selected, but no value supplied
+			if (this.fieldname != 'message' && this.fieldvalue.length == 0) {
+				cols.push(this.fieldname);
+			}
+			return cols.join(',');
+		},
+		filters: function () {
+			var filters = [];
+			filters.push("('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'" + this.namespace.kibanaIndex + "',key:kubernetes.namespace_name,negate:!f,params:(query:" + this.namespace.name + ",type:phrase),type:phrase,value:" + this.namespace.name + "),query:(match:(kubernetes.namespace_name:(query:" + this.namespace.name + ",type:phrase))))");
+			if (this.app.length) {
+				filters.push("('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'" + this.namespace.kibanaIndex + "',key:kubernetes.container_name,negate:!f,params:(query:" + this.app + ",type:phrase),type:phrase,value:" + this.app + "),query:(match:(kubernetes.container_name:(query:" + this.app + ",type:phrase))))");
+			}
+			if (this.loglevel.label != 'INFO') {
+				filters.push("('$state':(store:appState),meta:(alias:!n,disabled:!f,index:'" + this.namespace.kibanaIndex + "',key:level_value,negate:!f,params:(gte:" + this.loglevel.value + ",lt:!n),type:range,value:'" + this.loglevel.value + "%20to%20%2B%E2%88%9E'),range:(level_value:(gte:" + this.loglevel.value + ",lt:!n)))");
+			}
+			return filters.join(',');
+		},
+		kibanaurl: function () {
+			const query = (this.fieldname.length && this.fieldvalue.length) ?
+				"query:(language:kuery,query:'" + this.fieldname + ":%22" + this.fieldvalue + "%22')," : '';
+			const time = "from:" + this.timewindow.from + ",mode:quick,to:" + this.timewindow.to;
+			const refreshIntervalValue = this.refreshInterval.value ? 'pause:!f,value:5000' : 'pause:!t,value:0';
+			return this.namespace.kibanaUrl
+				+ "?_g=(refreshInterval:(" + refreshIntervalValue + "),time:(" + time + "))"
+				+ "&_a=(columns:!(" + this.columns + "),"
+				+ "filters:!(" + this.filters + "),"
+				+ "index:'" + this.namespace.kibanaIndex + "',"
+				+ "interval:auto," + query
+				+ "sort:!('@timestamp',desc))";
+		},
+		otherurls: function () {
+			return {
+				Kubernetes: "https://k8s-dashboard.example.com/#!/search?namespace=" + this.namespace.name + "&q=" + this.app,
+				Grafana: "https://grafana.example.com/d/service/pods?orgId=1&var-namespace=" + this.namespace.name + "&var-app=" + this.app + "&from=" + this.timewindow.from + (this.refreshInterval.value ? "&refresh=5s" : ''),
+				GitHub: "https://github.com/timtebeek/" + this.app
+			};
+		}
+	},
+	watch: {
+		apps: function (options) {
+			// Autoselect single app option
+			if (options.length == 1) {
+				this.app = options[0];
+			}
+		},
+		namespace: function(namespace) {
+			// Reset app as needed
+			if (!namespace.apps.includes(this.app)) {
+				this.app = '';
+			}
+		}
+	},
+	created: function () {
+		// Fetch all namespace apps
+		fetch('./namespaces.json')
+			.then(data => data.json())
+			.then(result => {
+				this.namespaces = result;
+				this.namespaces.map(nmspc =>
+					fetch('./apps-' + nmspc.name + '.txt')
+						.then(data => data.text())
+						.then(text => nmspc.apps = text.split(/\r?\n/).sort()));
+			});
+	}
+});
+		} //]]></script>
+</head>
+
+<body>
+	<div id="app" class="container">
+		<form>
+			<!-- Namespace and app selectors -->
+			<div class="row">
+				<div class="col-sm-3 form-group">
+					<label>Namespace</label>
+					<select v-model="namespace" size="12" class="form-control">
+						<option v-for="option in namespaces" v-bind:value="option">{{ option.name }}</option>
+					</select>
+				</div>
+				<div class="col form-group">
+					<label>App</label> <input v-model="appfilter" type="text" class="form-control" />
+					<select v-model="app" size="10" class="form-control">
+						<option v-for="option in apps" v-bind:value="option">{{ option }}</option>
+					</select>
+				</div>
+				<div class="col-sm-3 form-group">
+					<label>Field name</label>
+					<select v-model="fieldname" class="form-control" size="10">
+						<option>message</option>
+						<option>MESSAGE</option>
+						<option>correlation_id</option>
+						<option>message_id</option>
+						<option>sender_id</option>
+						<option>receiver_id</option>
+						<option>stack_trace</option>
+						<option>traceId</option>
+						<option>logger_name</option>
+					</select>
+					<input type="text" v-model="fieldvalue" class="form-control" placeholder="Field value">
+				</div>
+			</div>
+		</form>
+		<!-- Other selectors -->
+		<div class="row">
+			<div class="col">
+				<div class="input-group mb-3">
+					<div class="input-group-prepend">
+						<label class="input-group-text" for="timewindow">Time window</label>
+					</div>
+					<select class="custom-select" id="timewindow" v-model="timewindow">
+						<option v-for="option in timewindows" v-bind:value="option">{{ option.from }} to {{ option.to }}</option>
+					</select>
+				</div>
+			</div>
+			<div class="col">
+				<div class="input-group mb-3">
+					<div class="input-group-prepend">
+						<label class="input-group-text" for="refresh">Refresh</label>
+					</div>
+					<select class="custom-select" id="refresh" v-model="refreshInterval">
+						<option v-for="option in refreshIntervals" v-bind:value="option">{{ option.label }}</option>
+					</select>
+				</div>
+			</div>
+			<div class="col">
+				<div class="input-group mb-3">
+					<div class="input-group-prepend">
+						<label class="input-group-text" for="loglevel">Log level</label>
+					</div>
+					<select class="custom-select" id="loglevel" v-model="loglevel">
+						<option v-for="option in loglevels" v-bind:value="option">{{ option.label }}</option>
+					</select>
+				</div>
+			</div>
+		</div>
+		<!-- URLs based on selectors -->
+		<div class="row">
+			<div class="col-6" v-if="namespace.name && (app.length || fieldvalue.length || loglevel.label != 'INFO')">
+				<a v-bind:href="kibanaurl" target="_blank">
+					<h3>Kibana logs</h3>
+					<p>{{kibanaurl}}</p>
+				</a>
+			</div>
+			<div class="col-6" v-if="app.length">
+				<div v-for="(url, name) in otherurls">
+					<a v-bind:href="url" target="_blank">
+						<h3>{{name}}</h3>
+						<p>{{url}}</p>
+					</a>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+
+</html>

@@ -1,0 +1,7 @@
+[
+     { "name": "example", "kibanaUrl": "https://kibana.example.com/app/kibana#/discover/", "kibanaIndex": "e19b3636-43a1-4003-9d98-5f4beec30734" },
+     { "name": "dev", "kibanaUrl": "https://dev-kibana.example.com/app/kibana#/discover/", "kibanaIndex": "e19b3636-43a1-4003-9d98-5f4beec30734" },
+     { "name": "tst", "kibanaUrl": "https://tst-kibana.example.com/app/kibana#/discover/", "kibanaIndex": "05da8e54-b839-4386-aed2-83d86e792d46" },
+     { "name": "acc", "kibanaUrl": "https://acc-kibana.example.com/app/kibana#/discover/", "kibanaIndex": "536e756e-d547-41b0-927a-8715278869e3" },
+     { "name": "prd", "kibanaUrl": "https://prd-kibana.example.com/app/kibana#/discover/", "kibanaIndex": "eef52767-efa0-43ff-8c52-a08bbe89cc91" }
+]

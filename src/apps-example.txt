@@ -1,0 +1,5 @@
+example-backend
+example-client
+example-database
+example-frontend
+example-gateway
