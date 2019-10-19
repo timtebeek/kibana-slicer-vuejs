@@ -1,6 +1,6 @@
 # Kibana log slicer with Vue.js
 
-https://vuejs.org[Vue.js] application to quickly drill down into https://www.elastic.co/products/kibana[Kibana], for applications deployed to Kubernetes.
+https://vuejs.org[Vue.js] application to quickly drill down into https://www.elastic.co/products/kibana[Kibana], for applications deployed to Kubernetes. More https://divotion.com/blog/2019/10/slicing-kibana-logs-with-vue-js/[details on company blog].
 
 image:/dist/kibana-url-vuejs.png[alt='Quick screenshot for the impatient']
 As the look and feel of the application already shows: This is an application built by developers for developers. :)
